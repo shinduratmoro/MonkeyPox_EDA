@@ -1,0 +1,84 @@
+SELECT * FROM monkey_pox
+
+-- see how many people have confirmed and suspected cases
+SELECT status, COUNT(status) as quantity FROM monkey_pox
+       WHERE NOT status IS NULL
+       GROUP BY status;
+       
+-- see in percentage       
+WITH status_table AS (SELECT status, COUNT(status) as quantity FROM monkey_pox
+       WHERE NOT status IS NULL
+       GROUP BY status
+)
+     SELECT status, quantity, 
+            ROUND(quantity *100 / (SELECT SUM(quantity) FROM status_table), 2) as percentage
+     FROM status_table
+     GROUP BY status, quantity
+     ORDER BY percentage DESC;
+     
+-- see cases per day
+SELECT date_confirmation,
+       COUNT(status) A
+FROM monkey_pox
+GROUP BY date_confirmation
+ORDER BY date_confirmation
+
+-- see confirmed and suspected cases per day
+WITH confirmed_table AS (
+SELECT date_confirmation, 
+       COUNT(STATUS) as confirmed
+FROM monkey_pox
+WHERE status = 'confirmed'
+GROUP BY date_confirmation
+),
+suspected_table AS (
+SELECT monkey_pox.date_confirmation, 
+       COUNT(STATUS) as suspected
+FROM monkey_pox
+WHERE status = 'suspected'
+GROUP BY monkey_pox.date_confirmation
+)
+SELECT COALESCE(confirmed_table.date_confirmation, suspected_table.date_confirmation) as date_confirmation, 
+       COALESCE(confirmed_table.confirmed,0) + COALESCE(suspected_table.suspected,0) AS total_cases,
+       COALESCE(confirmed_table.confirmed,0) as confirmed,
+       COALESCE(suspected_table.suspected,0) as suspected
+       FROM confirmed_table
+FULL JOIN suspected_table
+ON confirmed_table.date_confirmation = suspected_table.date_confirmation
+ORDER BY confirmed_table.date_confirmation
+
+-------------------------------------------------------------------
+
+-- see cases per country
+SELECT country, 
+       COUNT(status) as cases
+FROM monkey_pox
+GROUP BY country
+ORDER BY cases DESC
+
+-- see confirmed and suspected cases per country
+WITH confirmed_table AS (
+SELECT country, 
+       COUNT(STATUS) as confirmed
+FROM monkey_pox
+WHERE status = 'confirmed'
+GROUP BY country
+),
+suspected_table AS (
+SELECT monkey_pox.country, 
+       COUNT(STATUS) as suspected
+FROM monkey_pox
+WHERE status = 'suspected'
+GROUP BY monkey_pox.country
+)
+SELECT COALESCE(confirmed_table.country,suspected_table.country), 
+       COALESCE(confirmed_table.confirmed,0) + COALESCE(suspected_table.suspected,0) AS total_cases,
+       COALESCE(confirmed_table.confirmed,0) as confirmed,
+       COALESCE(suspected_table.suspected,0) as suspected
+       FROM confirmed_table
+FULL JOIN suspected_table
+ON confirmed_table.country = suspected_table.country
+ORDER BY total_cases DESC
+
+-------------------------------------------------------------------------------------------
+SELECT * FROM monkey_pox LIMIT 5
